@@ -31,3 +31,4 @@ Thumbs.db
 external/
 *.log
 data/ground_truth/
+data/stage_b/
