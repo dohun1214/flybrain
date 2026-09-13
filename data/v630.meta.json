@@ -1,0 +1,39 @@
+{
+ "version": "630",
+ "n_neurons": 127400,
+ "n_edges": 14687178,
+ "syn_sum": 52793639,
+ "n_edges_ge5": 2614028,
+ "threshold": "none (all edges)",
+ "w_syn_mv": 0.275,
+ "n_excitatory_edges": 8800532,
+ "n_inhibitory_edges": 5886646,
+ "weight_abs_sum_mv": 14518250.0,
+ "max_out_degree": 9615,
+ "n_neurons_no_output": 385,
+ "n_neurons_no_input": 607,
+ "source_files": [
+  "2023_03_23_completeness_630_final.csv",
+  "2023_03_23_connectivity_630_final.parquet"
+ ],
+ "expected_values_match_plan": true,
+ "annotation": {
+  "source": "flyconnectome/flywire_annotations Supplemental_file1_neuron_annotations.tsv",
+  "n_annotation_rows": 139248,
+  "n_matched": 106214,
+  "match_rate": 0.8337048665620094,
+  "super_class_counts": {
+   "optic": 59374,
+   "central": 28690,
+   "sensory": 8126,
+   "visual_projection": 6335,
+   "ascending": 1587,
+   "descending": 1086,
+   "sensory_ascending": 569,
+   "visual_centrifugal": 298,
+   "motor": 85,
+   "endocrine": 64
+  }
+ },
+ "build_seconds": 5.8
+}
