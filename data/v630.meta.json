@@ -1,5 +1,6 @@
 {
  "version": "630",
+ "dataset": "flywire",
  "n_neurons": 127400,
  "n_edges": 14687178,
  "syn_sum": 52793639,
@@ -35,5 +36,5 @@
    "endocrine": 64
   }
  },
- "build_seconds": 5.8
+ "build_seconds": 5.9
 }
