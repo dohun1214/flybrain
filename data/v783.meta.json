@@ -1,5 +1,6 @@
 {
  "version": "783",
+ "dataset": "flywire",
  "n_neurons": 138639,
  "n_edges": 15091983,
  "syn_sum": 54492922,

@@ -17,8 +17,15 @@
 출력 (git 추적, data/):
     v{ver}.meta.json   뉴런 수, edge 수, 시냅스 합, ≥5 연결 수, 임계값(없음), 주석 매칭률 …
 
-뉴런 순서 = Completeness CSV 행 순서 (= parquet의 *_Index). 가중치 = `Excitatory x Connectivity` × 0.275 mV.
+뉴런 순서 = Completeness CSV 행 순서 (= parquet의 *_Index). 가중치 = 부호 × 시냅스 수 × 0.275 mV.
 임계값 없음: 모든 뉴런쌍 edge를 그대로 쓴다 (계획서 §3.2).
+
+구조 (이슈 #3 설계 메모): 로더는 데이터셋 독립적. 어댑터가 세 가지를 내놓는다 —
+  neurons: DataFrame(root_id [, annotation 열…])  (행 순서 = 인덱스)
+  edges:   DataFrame(pre, post, syn_count, sign)    (pre/post = neurons 행 인덱스, sign ∈ {+1, −1, 0})
+  meta:    dict(version, source_files, …)
+FlyWire 어댑터(`load_flywire`, Shiu parquet+CSV, Excitatory 열)를 먼저 구현. 6주차 MaleCNS 판단 시
+feather 어댑터(body-annotations / consensus_nt → ACh·DA·OA·5-HT +1, GABA·Glu −1, His·unknown 0 / connectome-weights)만 추가.
 """
 import json
 import sys
@@ -47,13 +54,11 @@ ANNOT_COLS = ["super_class", "cell_class", "cell_sub_class", "cell_type", "hemib
               "flow", "nerve", "top_nt", "top_nt_conf", "pos_x", "pos_y", "pos_z", "soma_x", "soma_y", "soma_z"]
 
 
-def build(ver: str):
-    t0 = time.time()
+def load_flywire(ver: str):
+    """FlyWire 어댑터: Shiu 리포 파일 → (neurons, edges, meta)."""
     comp_path, con_path = (SHIU / f for f in FILES[ver])
     df_comp = pd.read_csv(comp_path, index_col=0)
     root_ids = df_comp.index.values.astype(np.int64)
-    n = len(root_ids)
-
     df = pd.read_parquet(con_path)
     pre = df["Presynaptic_Index"].values.astype(np.int64)
     post = df["Postsynaptic_Index"].values.astype(np.int64)
@@ -61,24 +66,54 @@ def build(ver: str):
     assert (root_ids[pre] == df["Presynaptic_ID"].values).all(), "Presynaptic_Index/ID 불일치"
     assert (root_ids[post] == df["Postsynaptic_ID"].values).all(), "Postsynaptic_Index/ID 불일치"
     assert not df.duplicated(["Presynaptic_Index", "Postsynaptic_Index"]).any(), "중복 edge"
+    neurons = pd.DataFrame({"root_id": root_ids})
+    edges = pd.DataFrame({"pre": pre, "post": post,
+                          "syn_count": df["Connectivity"].values.astype(np.int32),
+                          "sign": df["Excitatory"].values.astype(np.int8)})
+    meta = dict(version=ver, dataset="flywire", source_files=[comp_path.name, con_path.name],
+                expected=EXPECTED[ver])
+    return neurons, edges, meta
+
+
+def load_annotations_flywire(root_ids):
+    """flywire_annotations TSV(v783 root_id) 를 root_ids 순서로 조인."""
+    annot = pd.read_csv(ANNOT, sep="\t", low_memory=False)
+    annot = annot.drop_duplicates("root_id").set_index("root_id")
+    joined = annot.reindex(root_ids)[ANNOT_COLS]
+    joined.insert(0, "root_id", root_ids)
+    joined.index = np.arange(len(root_ids))
+    joined.index.name = "index"
+    return joined, len(annot)
+
+
+def build(ver: str, loader=load_flywire, annotate=load_annotations_flywire):
+    """어댑터가 준 (neurons, edges, meta) → CSR npz + annot parquet + meta json. 데이터셋 독립."""
+    t0 = time.time()
+    neurons, edges, meta0 = loader(ver)
+    root_ids = neurons["root_id"].values.astype(np.int64)
+    n = len(root_ids)
+    pre = edges["pre"].values.astype(np.int64)
+    post = edges["post"].values.astype(np.int64)
+    df = edges
 
     # CSR (행 = pre). 안정 정렬로 pre → post 순
     order = np.lexsort((post, pre))
     pre_s, post_s = pre[order], post[order]
-    syn = df["Connectivity"].values[order].astype(np.int32)
-    exc = df["Excitatory"].values[order].astype(np.int8)
-    w = (df["Excitatory x Connectivity"].values[order] * W_SYN_MV).astype(np.float32)
-    assert set(np.unique(exc)) <= {-1, 1}
+    syn = df["syn_count"].values[order].astype(np.int32)
+    exc = df["sign"].values[order].astype(np.int8)
+    w = (exc.astype(np.float64) * syn * W_SYN_MV).astype(np.float32)
+    assert set(np.unique(exc)) <= {-1, 0, 1}
     indptr = np.zeros(n + 1, dtype=np.int64)
     np.add.at(indptr, pre_s + 1, 1)
     indptr = np.cumsum(indptr)
 
     meta = dict(
         version=ver,
+        dataset=meta0["dataset"],
         n_neurons=int(n),
         n_edges=int(len(df)),
-        syn_sum=int(df["Connectivity"].sum()),
-        n_edges_ge5=int((df["Connectivity"] >= 5).sum()),
+        syn_sum=int(df["syn_count"].sum()),
+        n_edges_ge5=int((df["syn_count"] >= 5).sum()),
         threshold="none (all edges)",
         w_syn_mv=W_SYN_MV,
         n_excitatory_edges=int((exc == 1).sum()),
@@ -87,23 +122,17 @@ def build(ver: str):
         max_out_degree=int(np.diff(indptr).max()),
         n_neurons_no_output=int((np.diff(indptr) == 0).sum()),
         n_neurons_no_input=int(n - len(np.unique(post))),
-        source_files=[str(comp_path.name), str(con_path.name)],
+        source_files=meta0["source_files"],
     )
-    for k, v in EXPECTED[ver].items():
+    for k, v in meta0.get("expected", {}).items():
         assert meta[k] == v, f"{ver} {k}: got {meta[k]}, expected {v}"
-    meta["expected_values_match_plan"] = True
+    meta["expected_values_match_plan"] = bool(meta0.get("expected"))
 
-    # 주석 조인 (v783 root_id 기준 TSV)
-    annot = pd.read_csv(ANNOT, sep="\t", low_memory=False)
-    annot = annot.drop_duplicates("root_id").set_index("root_id")
-    joined = annot.reindex(root_ids)[ANNOT_COLS]
-    joined.insert(0, "root_id", root_ids)
-    joined.index = np.arange(n)
-    joined.index.name = "index"
+    joined, n_annot_rows = annotate(root_ids)
     matched = joined["super_class"].notna()
     meta["annotation"] = dict(
         source="flyconnectome/flywire_annotations Supplemental_file1_neuron_annotations.tsv",
-        n_annotation_rows=int(len(annot)),
+        n_annotation_rows=int(n_annot_rows),
         n_matched=int(matched.sum()),
         match_rate=float(matched.mean()),
         super_class_counts={k: int(v) for k, v in joined["super_class"].value_counts().items()},
