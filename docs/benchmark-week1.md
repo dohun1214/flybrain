@@ -228,3 +228,26 @@ silenced 뉴런 자신의 발화율: 101.0 / 97.6 / 114.6 Hz (Brian2 99.4 / 98.7
 - 뇌 청크 30 ms(단독 실행 18.7 ms 보다 큼 — `run()` 호출당 기록 버퍼 복사·CPU 전송 오버헤드), 몸 66~74 ms. 순차 합산이라 두 쪽을 병렬(뇌는 GPU 비동기, 몸은 CPU)로 돌리면 max(30, 70) ≈ 0.13~0.15×.
 - **판단 (계획서 §7 기준)**: 뇌 단독 0.5× 실시간 → 이벤트 구동 커널로 이미 전환한 상태이며 가지치기 불필요. 몸이 더 느리므로(0.15~0.2×) 2주차에 (a) 컨트롤러·관측을 numba/벡터화하거나 호출 주기를 낮추고 (b) 뇌·몸을 비동기로 겹치고 (c) 그래도 부족하면 계획대로 화면을 뇌와 같은 배율로 느리게 재생한다. 현재 예상 데모 속도는 실시간의 1/7 ~ 1/10.
 - CPU: 몸·뇌 루프 모두 단일 스레드 Python 바운드. 뇌 비교 실행 중 `Win32_Processor.LoadPercentage` 는 2% (28 스레드 기준) — 나머지 코어는 유휴라 스트리밍 인코딩 등과 동시 실행 가능. 정밀한 코어별 사용률은 아직 안 잼.
+
+## 하강뉴런 채널 초안 (이슈 #7) — `brain/build_channels.py` → `brain/channels.json`
+
+주석 TSV cell_type(v783 root_id)으로 집단을 뽑고 v630 인덱스도 함께 기록. `status`·`evidence` 필드에 문헌 근거와 라벨을 넣었다. **전부 디코더 입력 후보이며, LIF 모델에서 실제로 그 행동을 내는지는 2~3주차 [검증 과제].**
+
+| 채널 | 정의 | side | v783 | v630 | v630 누락 | 상태 |
+|---|---|---|---|---|---|---|
+| forward | DNp09 | both | 2 | 2 | 0 | 근거 있음/모델 미검증 |
+| turn_left | DNa01, DNa02 | left | 2 | **1** | 1 (DNa01 left `720575940627787609` 가 v630 주석 매칭에 없음) | 근거 있음/모델 미검증 |
+| turn_right | DNa01, DNa02 | right | 2 | 2 | 0 | 근거 있음/모델 미검증 |
+| escape | DNp01 (Giant Fiber) | both | 2 | 2 | 0 | 근거 있음/모델 미검증 |
+| backward | MDN | both | 4 | 4 | 0 | 근거 있음/모델 미검증 |
+| looming_LC4 | LC4 | both | 104 | 92 | 12 | 근거 있음/모델 미검증 |
+| looming_LPLC2 | LPLC2 | both | 210 | 176 | 34 | 근거 있음/모델 미검증 |
+| proboscis_MN9 / groom_aBN1 / groom_aDN1 / groom_aDN2 | 논문 ID | — | 1 each | 1 each | 0 | 검증됨 (논문) |
+| input_sugar_GRN_R / L, bitter, water, JON_CE, JON_F | 논문 ID | — | 20/9/20/18/69/60 | 21/10/21/18/70/60 | 1/1/1/0/1/0 | 검증됨 (논문 ID) |
+
+- **정지 DN [검증 과제]**: Sapkal et al. 2024 (Nature, "Neural circuit mechanisms underlying context-specific halting") 의 **Foxglove·Bluebell** — SEZ 에서 내려가는 GABA성 하강뉴런으로 walking-promotion DN(DNp09 포함)을 억제한다. FlyWire cell_type 명칭은 논문 보충자료에서 확인해야 함(주석 TSV synonyms 에 없음) → 2주차. 같은 논문의 Brake 는 VNC 상행뉴런이라 뇌 모델 밖.
+- **DNp09 주의**: Bidaye et al. 2020 은 전진 보행 DN 으로, Zacarias et al. 2018 은 freezing(정지) DN 으로 보고(silencing 시 freezing 소실, running 유지). 자극 세기·문맥 의존. 디코더에서 "전진"으로 읽되 정지 채널과 충돌 가능성을 기록해 둔다.
+- turn_left 는 v630 에서 DNa01 이 빠져 DNa02 하나뿐 → v630 단계 STEERING 실험은 DNa02 L/R 로만, 좌우 대칭 비교는 v783(Stage C) 이후에.
+- LC4/LPLC2 는 v630 에서 각각 12·34개 누락(주석 매칭 83% 영향) → Level C looming 실험은 v783 에서.
+
+Sources: [Zacarias et al. 2018, Nat Commun](https://www.nature.com/articles/s41467-018-05875-1) · [Bidaye et al. 2020 (bioRxiv 판)](https://www.biorxiv.org/content/10.1101/798439v1.full) · [Sapkal et al. 2024, Nature](https://www.nature.com/articles/s41586-024-07854-7)
