@@ -43,11 +43,11 @@
 | 커넥톰 | Stage A/B **v630**(원논문, 리포 동봉), Stage C **v783** | [검증됨] |
 | 세포 타입 주석 | `flyconnectome/flywire_annotations` TSV(139,248행, v783 root_id 기준). **v783 뉴런의 99.99%(138,625/138,639) 매칭, v630은 83%(106,214/127,400)만 매칭** → 주석 기반 패널·검색은 v783(Stage C 이후)에서 완전해짐. **논문 핵심 뉴런의 v630 root_id는 리포 `figures.ipynb`에 전부 있음**(당 GRN 21, 쓴맛 21, 물 18, JON-CE 70, JON-F 60, MN9, aBN1, aDN1, aDN2) | [검증됨] |
 | 몸·세계 | **FlyGym 2.1.0**(Apache-2.0, PyPI). `pip install flygym[examples]` (`flygym_demo` 패키지는 기본 설치에 포함, `examples`는 노트북용 pandas·tqdm 추가). 첫 실행 시 대형 메시를 S3에서 자동 다운로드(네트워크 필요) | [검증됨] |
-| 보행 | `flygym_demo.complex_terrain.HybridTurningController.step(descending_signal: shape (2,), obs)` — 절댓값이 좌/우 CPG 진폭, **부호가 CPG 주파수 방향(음수 = 역방향 = 후진 후보)** | [검증됨] 코드; 음수 신호가 안정적 후진 보행을 내는지 [검증 과제] |
-| 겹눈 | `Simulation.get_raw_vision` / `get_ommatidia_readouts` | [검증됨] 코드 존재; 2.x 튜토리얼 없음 → 1주차 동작 확인 [검증 과제] |
+| 보행 | `flygym_demo.complex_terrain.HybridTurningController.step(descending_signal: shape (2,), obs)` — 절댓값이 좌/우 CPG 진폭, **부호가 CPG 주파수 방향(음수 = 역방향 = 후진)** | [검증됨] 코드 + 1주차 실측: `[-1,-1]` 2초에 heading 방향 −20.3 mm, 자세 유지 (`docs/benchmark-week1.md`) |
+| 겹눈 | `Simulation.get_raw_vision` / `get_ommatidia_readouts` — `fly.add_vision()` 필요. 눈당 낱눈 721개, 호출당 8 ms | [검증됨] 1주차 실행 (`docs/benchmark-week1.md`) |
 | 후각 | **2.x에 없음** — 냄새원↔더듬이·구기 사이트 거리로 농도 직접 계산 | [검증됨] 없음; 계산은 [직접 설계] |
 | 접촉 | `get_ground_contact_info`, `get_bodysegment_contact_forces` | [검증됨] |
-| 몸의 관절 | 2.x MJCF 관절 87개: 다리 6×7 + 머리(pitch/roll/yaw) + 더듬이(pedicel·funiculus·arista 각 3축 × 좌우). **주둥이(rostrum/haustellum)·날개·복부에는 관절 없음**(바디만 존재) | [검증됨] |
+| 몸의 관절 | 2.x는 관절을 `Skeleton(joint_preset)`으로 생성. `LEGS_ONLY` 66개(능동 42) · `ALL_BIOLOGICAL` 126개 · `ALL_POSSIBLE` 204개. **주둥이(rostrum/haustellum)·날개·평균곤·복부·더듬이·눈 관절 모두 생성 가능**(각 3축 힌지). 미리 만들어진 동작은 다리 보행뿐 → 주둥이 신전·점프 궤적은 직접 설계 | [검증됨] 1주차 스모크(`docs/benchmark-week1.md`) — v5.1의 "관절 없음"은 오류였음 |
 | 서버 | 자택 4060 Ti **8GB**, Python 단일 프로세스. 뇌만 GPU, FlyGym은 CPU(Warp 제외) | — |
 | 뷰어 | 5주차: 서버 렌더(MuJoCo) 영상 스트리밍 — 바닥 텍스처·스카이박스·그림자·재질·카메라 워크 튜닝 포함. **7주차: Godot 렌더러(P1)** — 서버가 관절 각도·위치만 송출, Godot이 NeuroMechFly 메시(Apache-2)를 PBR 재질·실시간 조명·꾸민 세계로 그림 + 카메라 조작 + Surgery/상호작용 UI. flygym WASM 뷰어는 대안 | 영상 [직접 설계, 저위험]; Godot 메시 임포트·관절 매핑(87개) [검증 과제] |
 | 파리 수 | 1마리 | — |
@@ -213,8 +213,8 @@ Inspector 연동: silencing 즉시 `SILENCED` 표시, Event Replay에 개입 기
 | 회전 | DNa01, DNa02 L/R | [근거 있음/모델 미검증] | 동일 |
 | 멈춤 | 정지 DN(타입 [검증 과제]) | [근거 있음/모델 미검증] | 신호 0 |
 | 후진 | MDN | [근거 있음/모델 미검증] | HybridTurningController에 **음수 신호** → CPG 역방향 [검증됨 코드]; 실제 보행 안정성 [검증 과제] |
-| 도망 점프 | DNp01(FlyWire 명칭; `GF` 아님) | [근거 있음/모델 미검증] | **날개 관절 없음 → "이륙" 애니메이션 불가.** 점프 = 뒷다리 신전 시퀀스(관절 있음) [직접 설계] |
-| 주둥이(몸) | MN9 경로 | [검증됨](Level A) | **2.x에 주둥이 관절 없음 [검증됨]** → v1: 정지 + 머리 pitch 숙임 + Fly POV/Inspector에 `PROBOSCIS EXT` 표시. 선택: MjSpec으로 c_rostrum에 힌지 관절 추가(FlyGym이 MjSpec 기반이라 가능성 있음) [검증 과제, P1] |
+| 도망 점프 | DNp01(FlyWire 명칭; `GF` 아님) | [근거 있음/모델 미검증] | 점프 = 뒷다리 신전 시퀀스 [직접 설계]. 날개 관절은 생성 가능하나 비행 물리는 없음 → 날개 펼침은 연출용만 |
+| 주둥이(몸) | MN9 경로 | [검증됨](Level A) | 주둥이 관절(`c_head-c_rostrum`, `c_rostrum-c_haustellum`)은 `ALL_BIOLOGICAL` 골격으로 생성 가능 [검증됨 1주차]. 신전 각도 궤적은 직접 설계 [직접 설계]. v1 대안: 정지 + 머리 pitch 숙임 + `PROBOSCIS EXT` 표시 |
 | 더듬이 그루밍(몸) | aDN 경로 | [검증됨](Level A) | 앞다리 시퀀스 + 더듬이 관절(pedicel 3축, 있음) 눌림 [직접 설계] |
 
 ### Level C — 프로젝트 고유 폐루프 확장 (전부 [직접 설계], 성공 보장 없음)
@@ -298,7 +298,7 @@ Shiu LIF 모델은 완전한 기능 모델이 아니다: 모든 뉴런 단일 LI
 | 겹눈 API 미작동/느림 | 2.x에 튜토리얼 없음. 1주차 확인. 렌더 주기를 뇌 dt와 분리(10ms마다) |
 | 뇌·몸 시간축 | 뇌 N스텝 ↔ 물리 M스텝 고정 비율, 디코더 50ms 창. 실시간 미달 시 같은 배율로 |
 | Level C 실패 | 직접 규칙 대체 + 표시. 시연은 STEERING LESION 대체 |
-| 주둥이·날개 관절 없음 | 먹기는 정지+머리 숙임+표시로, 도망은 다리 점프로. 시각적 임팩트가 줄면 P1에서 rostrum 힌지 추가 시도 |
+| 주둥이·날개 동작 없음 | 관절은 생성 가능(1주차 확인)하나 동작은 직접 설계. 먹기 v1은 정지+머리 숙임+표시, 도망은 다리 점프. 여유 시 rostrum 각도 궤적 추가 |
 | v630 주석 매칭 83% | 1~2주차 패널은 매칭된 뉴런만 표시하고 "주석 없음" 집계를 따로 둠. Stage C 이후 완전 |
 | 서버 단일 장애점 | systemd, 스냅샷, "파리 자는 중", 발표 당일 노트북 백업 |
 | 라이선스 | flygym Apache-2.0, Shiu MIT, FlyWire CC-BY 4.0 [검증됨]; eonsystems GPL-2 읽기만 |

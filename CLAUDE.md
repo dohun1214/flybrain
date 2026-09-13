@@ -58,7 +58,7 @@ docs/     plan.md, benchmark-week1.md(측정 결과), decisions.md
 
 - 논문 뉴런 ID: `data/paper_ids.json` (v630 root_id). 논문 명칭(aDN1, aBN1, GF, MN9)은 FlyWire cell_type에 **없다** — ID로 찾는다. aDN1=`DNg62`, aDN2=`DNge078`, aBN1=`SAD093`, MN9=`CB0701`(super_class motor). 당·물 GRN은 둘 다 cell_type `LB3`라 타입으로 구분 불가.
 - 주석 TSV(`flyconnectome/flywire_annotations`)는 v783 기준: v783 99.99% 매칭, v630은 83%만.
-- FlyGym 2.1 몸: 관절 87개(다리 42 + 머리 3 + 더듬이 18…). **주둥이·날개·복부에 관절 없음.** 후각 API 없음(직접 계산). `HybridTurningController.step(descending_signal(2,), obs)` — 음수 신호 = CPG 역방향.
+- FlyGym 2.1 몸: 관절은 MJCF 고정이 아니라 `fly.add_joints(Skeleton(joint_preset=…))`로 생성된다. 기본 보행 파리(`LEGS_ONLY`) 66개(능동 42), `ALL_BIOLOGICAL` 126개 — **주둥이(rostrum/haustellum)·날개·평균곤·복부·더듬이·눈 관절 전부 생성 가능** (2026-09-13 `body/smoke_test.py joints`로 확인). 단 그 관절들엔 미리 만들어진 동작이 없다. 후각 API 없음(직접 계산). `HybridTurningController.step(descending_signal(2,), obs)` — 음수 신호 = CPG 역방향.
 
 ## 참고 리포
 - 뇌 모델 원본: https://github.com/philshiu/Drosophila_brain_model (MIT)
