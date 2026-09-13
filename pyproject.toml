@@ -1,0 +1,18 @@
+[project]
+name = "flybrain"
+version = "0.1.0"
+description = "Embodied connectome simulator: Shiu et al. 2024 LIF brain (PyTorch CUDA) + NeuroMechFly v2 body (FlyGym 2.1)"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "torch>=2.14",
+    "flygym[examples]==2.1.0",
+]
+
+# torch는 CUDA 13.0 휠 인덱스에서만 받는다 (RTX 4060 Ti, 드라이버 610.88)
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

@@ -1,0 +1,10 @@
+# Shiu 원본(Brian2) 재현 전용 환경 — philshiu/Drosophila_brain_model environment.yml 기준
+# 생성: uv venv --python 3.10 .venv-brian2
+# 설치: uv pip install --python .venv-brian2\Scripts\python.exe -r requirements-brian2.txt
+brian2==2.5.1
+numpy==1.24.4
+pandas
+pyarrow
+joblib
+cython
+setuptools<80   # brian2 2.5.1이 pkg_resources를 import함 (setuptools 80+에서 제거)
