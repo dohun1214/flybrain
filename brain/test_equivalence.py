@@ -6,6 +6,7 @@
 실행 (.venv-brian2 에 torch CPU 설치 필요: uv pip install --python .venv-brian2\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu):
     python brain/test_equivalence.py 1000                                    # 1초, silencing 없음
     python brain/test_equivalence.py 500 720575940622695448,720575940617937543   # 0.5초, 두 뉴런 silence
+    python brain/test_equivalence.py 1000 --graph                             # lif_graph.py 고정 형상 스텝 검증
 기대 출력: identical: True
 """
 import sys, time
@@ -20,8 +21,10 @@ import pandas as pd
 import model
 from data.ids import Connectome
 
-T_MS = float(sys.argv[1]) if len(sys.argv) > 1 else 200.0
-SLNC = [int(x) for x in sys.argv[2].split(",")] if len(sys.argv) > 2 else []   # silence 할 root_id 목록
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+USE_GRAPH = "--graph" in sys.argv   # brain/lif_graph.py (고정 형상 스텝) 검증
+T_MS = float(args[0]) if len(args) > 0 else 200.0
+SLNC = [int(x) for x in args[1].split(",")] if len(args) > 1 else []   # silence 할 root_id 목록
 c = Connectome("630")
 sugar = c.lists["neu_sugar"]
 rng = np.random.default_rng(0)
@@ -51,18 +54,26 @@ print("brian2 spikes", len(b), "active", len(set(b_i.tolist())), "MN9", int((b_i
 # ---------------- torch kernel (cpu), 같은 이벤트 주입
 import torch
 from brain.lif import LIFBrain
-brain = LIFBrain("630", device="cpu", seed=0)
-brain.silence(slnc_idx)
-brain.rfc_steps[torch.as_tensor(sugar)] = 0
 sugar_t = torch.as_tensor(sugar)
 ev_t = torch.as_tensor(events)
-brain.inject = lambda k: (sugar_t, ev_t[k])
-out = []
-for k in range(n_steps):
-    rows = brain.step_once()
-    if rows.numel():
-        out.append(torch.stack([torch.full_like(rows, k), rows], 1))
-spk = torch.cat(out).numpy() if out else np.zeros((0, 2), int)
+if USE_GRAPH:
+    from brain.lif_graph import LIFBrainGraph
+    brain = LIFBrainGraph("630", device="cpu", seed=0)
+    brain.silence(slnc_idx)
+    brain.rfc_steps[sugar_t] = 0
+    brain.inject_idx, brain.inject_events = sugar_t, ev_t
+    t0 = time.time(); spk = brain.run(T_MS * 1e-3).numpy(); print("torch(fixed-shape, cpu) wall %.0fs" % (time.time() - t0))
+else:
+    brain = LIFBrain("630", device="cpu", seed=0)
+    brain.silence(slnc_idx)
+    brain.rfc_steps[sugar_t] = 0
+    brain.inject = lambda k: (sugar_t, ev_t[k])
+    out = []
+    for k in range(n_steps):
+        rows = brain.step_once()
+        if rows.numel():
+            out.append(torch.stack([torch.full_like(rows, k), rows], 1))
+    spk = torch.cat(out).numpy() if out else np.zeros((0, 2), int)
 t_ = set(zip(spk[:, 0].tolist(), spk[:, 1].tolist()))
 print("torch spikes", len(t_), "active", len(set(spk[:, 1].tolist())), "MN9", int((spk[:, 1] == c.index_of(720575940660219265)).sum()))
 print("identical:", b == t_, "| only brian2:", len(b - t_), "only torch:", len(t_ - b))
