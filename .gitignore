@@ -25,3 +25,9 @@ demo_output/
 Thumbs.db
 .vscode/
 .idea/
+
+# local envs / external repos / logs
+.venv-brian2/
+external/
+*.log
+data/ground_truth/
