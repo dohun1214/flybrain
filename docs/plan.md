@@ -245,7 +245,7 @@ CPU 사용률 · 결합 폐루프 처리량 (뇌 + FlyGym + 인코더 + 합성)
 | 3 | 도망 + 그루밍 + **Fly POV v0** | Level A 그루밍 재현(ID 확보됨). 겹눈 → looming 점수 → LC4/LPLC2 → DNp01 유의 증가 → 뒷다리 점프. JON → 그루밍. **Fly POV에 겹눈·looming 점수 표시(디버깅용)** | LC4/LPLC2 v783 ID(주석 cell_type 있음 [검증됨]) |
 | 4 | 후각 + 먹기 + **Fly POV 완성 + Inspector v1** | 냄새 농도 직접 계산 → ORN → 정위. 접촉 → GRN → 주둥이. Fly POV 4요소, Inspector 흐름·채널·행동 | — |
 | **5** | **공개: Aquarium + Fly POV + Inspector** | 영상 스트림 공개 URL, 24시간 가동, 설문 10문항. 여유 시 웹 버튼 3개 + intervention 백엔드(API만) | 스트리밍 방식 |
-| **6** | **Brain Surgery 구현** | `집단 선택 → silence → 같은 자극 재실행 → NORMAL/SILENCED 분할 화면` 완성. 검증된 프리셋만 노출 | FEEDING 프리셋 집단 |
+| **6** | **Brain Surgery 구현 + 차별화 결정** | `집단 선택 → silence → 같은 자극 재실행 → NORMAL/SILENCED 분할 화면` 완성. 검증된 프리셋만 노출. **MaleCNS(구글·Janelia 수컷 데이터) 추가 여부를 이 주에 판단** — 기준은 §10 | FEEDING 프리셋 집단 |
 | 7 | Surgery UI + 상호작용 | 웹에서 검색·프리셋·RERUN. 먹이·그림자·먼지 버튼. Event Replay 완성. (P2 여유 시 stimulation) | — |
 | 8 | 발표 준비 | 대표 개입 실험 결과 정리, 설문 10건, 시연 리허설, 실패 케이스 | — |
 | 9 | 버퍼 | — | — |
@@ -262,7 +262,10 @@ CPU 사용률 · 결합 폐루프 처리량 (뇌 + FlyGym + 인코더 + 합성)
 | **P2** | stimulation UI · WASM 뷰어 · Godot · LLM 해설 · 여러 마리 · MaleCNS | P0/P0.5를 희생해 P2를 하지 않는다 |
 
 ## 10. 선택 백로그
-셔플 대조군 재현(Stage A 위에서 100회, 발표 한 장) · Level A 3·4순위 · MaleCNS(Xenova 엔진 MIT 참고) · FlyGym Warp(8GB라 제외)
+- 셔플 대조군 재현(Stage A 위에서 100회, 발표 한 장)
+- Level A 3·4순위(쓴맛·물)
+- **MaleCNS 두 번째 뇌 추가** — 6주차에 판단. 조건: (1) 1~5주차가 일정대로 끝났고 (2) Brain Surgery가 6주차 안에 마무리될 전망일 때만. 방식: 엔진은 그대로, 데이터 파일 + 뉴런 ID 목록만 교체(Xenova MIT 엔진의 MaleCNS 로더 참고). 용도: 수컷 행동(구애·공격) 실험, "구글 데이터도 돌아간다"는 발표 대응. 주의: MaleCNS에는 검증된 LIF 벤치마크가 없으므로 [근거 있음/모델 미검증]으로 표시하고 FlyWire 결과와 같은 급으로 말하지 않는다
+- FlyGym Warp(8GB라 제외)
 
 ## 11. 최종 시연 시나리오 (약 5분)
 
