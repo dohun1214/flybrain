@@ -49,7 +49,7 @@
 | 접촉 | `get_ground_contact_info`, `get_bodysegment_contact_forces` | [검증됨] |
 | 몸의 관절 | 2.x MJCF 관절 87개: 다리 6×7 + 머리(pitch/roll/yaw) + 더듬이(pedicel·funiculus·arista 각 3축 × 좌우). **주둥이(rostrum/haustellum)·날개·복부에는 관절 없음**(바디만 존재) | [검증됨] |
 | 서버 | 자택 4060 Ti **8GB**, Python 단일 프로세스. 뇌만 GPU, FlyGym은 CPU(Warp 제외) | — |
-| 뷰어 | 5주차: 서버 렌더 영상 스트리밍(3D + Fly POV + Inspector 합성). 7주차+: 웹 버튼(상호작용·Surgery UI), 이후 flygym WASM 뷰어/Godot은 P2 | 영상 [직접 설계, 저위험]; WASM 뷰어 [검증 과제] |
+| 뷰어 | 5주차: 서버 렌더(MuJoCo) 영상 스트리밍 — 바닥 텍스처·스카이박스·그림자·재질·카메라 워크 튜닝 포함. **7주차: Godot 렌더러(P1)** — 서버가 관절 각도·위치만 송출, Godot이 NeuroMechFly 메시(Apache-2)를 PBR 재질·실시간 조명·꾸민 세계로 그림 + 카메라 조작 + Surgery/상호작용 UI. flygym WASM 뷰어는 대안 | 영상 [직접 설계, 저위험]; Godot 메시 임포트·관절 매핑(87개) [검증 과제] |
 | 파리 수 | 1마리 | — |
 | LLM | P2. 엔진의 구조화 이벤트를 문장으로만. 인과 추론 금지. API | — |
 | 쓰지 않는 것 | fly-escape(라이선스 없음), webgpu-fly(가중치 55배 축소), snedea/flybrain(DN 그룹 비어 있음), fly-brain-bench 엔진(가지치기·브라우저). eonsystems/fly-brain은 GPL-2라 읽기만 | — |
@@ -112,7 +112,7 @@
 │  [화면 합성] 3D + Fly POV + Inspector (+ Surgery 비교 뷰) → 30fps 송출    │
 └──────────────────────────────┬─────────────────────────────────────────┘
                                ▼
-     뷰어 N개: 영상 (5주차) → 웹 버튼: 먹이·그림자·먼지·Surgery (7주차) → WASM/Godot (P2)
+     뷰어 N개: 영상 (5주차) → Godot 렌더러 + 상호작용·Surgery UI (7주차, P1)
 ```
 
 **원칙: "뭘 할지"는 뇌가, "어떻게 움직일지"는 컨트롤러가.** DN 발화율 → FlyGym 신호 변환은 우리 디코더이지 FlyGym의 생물학적 매핑이 아니다. Fly POV는 인코더의 *입력*을, Brain Inspector는 뇌의 *출력*을 보여주므로 둘 사이에 인코더가 무엇을 했는지가 관객에게 드러난다.
@@ -136,6 +136,8 @@
 └────────────────────────────────────────────────────────┘
 ```
 Surgery 비교 시에는 3D 영역을 좌우 분할(NORMAL | SILENCED)하고 Inspector도 두 줄로.
+
+3D 퀄리티 단계: 1~5주차는 MuJoCo 렌더 + 튜닝(텍스처·조명·그림자·카메라). 7주차에 Godot 렌더러로 교체 — 관절 상태만 받아 그리므로 물리·뇌는 그대로. 5주차까지 뇌 연결이 안 되면 렌더러는 자동으로 밀린다.
 
 ### 5.2 Fly POV — 감각 입력 디버거
 
@@ -246,7 +248,7 @@ CPU 사용률 · 결합 폐루프 처리량 (뇌 + FlyGym + 인코더 + 합성)
 | 4 | 후각 + 먹기 + **Fly POV 완성 + Inspector v1** | 냄새 농도 직접 계산 → ORN → 정위. 접촉 → GRN → 주둥이. Fly POV 4요소, Inspector 흐름·채널·행동 | — |
 | **5** | **공개: Aquarium + Fly POV + Inspector** | 영상 스트림 공개 URL, 24시간 가동, 설문 10문항. 여유 시 웹 버튼 3개 + intervention 백엔드(API만) | 스트리밍 방식 |
 | **6** | **Brain Surgery 구현 + 차별화 결정** | `집단 선택 → silence → 같은 자극 재실행 → NORMAL/SILENCED 분할 화면` 완성. 검증된 프리셋만 노출. **MaleCNS(구글·Janelia 수컷 데이터) 추가 여부를 이 주에 판단** — 기준은 §10 | FEEDING 프리셋 집단 |
-| 7 | Surgery UI + 상호작용 | 웹에서 검색·프리셋·RERUN. 먹이·그림자·먼지 버튼. Event Replay 완성. (P2 여유 시 stimulation) | — |
+| 7 | **Godot 렌더러 + Surgery UI + 상호작용** | NeuroMechFly 메시 임포트·관절 매핑, PBR 재질·조명·세계 꾸미기, 카메라 조작. 관절 상태 WebSocket 수신. Godot 안에 검색·프리셋·RERUN, 먹이·그림자·먼지 버튼. Event Replay 완성. (P2 여유 시 stimulation) | 메시 임포트 경로, 관절 축 일치 |
 | 8 | 발표 준비 | 대표 개입 실험 결과 정리, 설문 10건, 시연 리허설, 실패 케이스 | — |
 | 9 | 버퍼 | — | — |
 
@@ -258,14 +260,15 @@ CPU 사용률 · 결합 폐루프 처리량 (뇌 + FlyGym + 인코더 + 합성)
 |---|---|---|
 | **P0** | Shiu 모델 재현 · PyTorch 뇌 · FlyGym 몸 · 뇌→몸 · 기본 보행 · 폐루프 행동 최소 1개 · Brain Inspector | 이게 없으면 프로젝트 없음 |
 | **P0.5** | Fly POV · Brain Surgery silencing · NORMAL vs SILENCED 비교 | 차별화. P0 다음 |
-| **P1** | 먹기 · 그루밍 · 도망 · 후각 정위 · Neural Event Replay · 웹 상호작용 | 행동 다양성 |
-| **P2** | stimulation UI · WASM 뷰어 · Godot · LLM 해설 · 여러 마리 · MaleCNS | P0/P0.5를 희생해 P2를 하지 않는다 |
+| **P1** | 먹기 · 그루밍 · 도망 · 후각 정위 · Neural Event Replay · 상호작용 · **Godot 렌더러(7주차)** | 행동 다양성 + 화면 퀄리티 |
+| **P2** | stimulation UI · WASM 뷰어 · LLM 해설 · 여러 마리 · MaleCNS | P0/P0.5를 희생해 P2를 하지 않는다 |
 
 ## 10. 선택 백로그
 - 셔플 대조군 재현(Stage A 위에서 100회, 발표 한 장)
 - Level A 3·4순위(쓴맛·물)
 - **MaleCNS 두 번째 뇌 추가** — 6주차에 판단. 조건: (1) 1~5주차가 일정대로 끝났고 (2) Brain Surgery가 6주차 안에 마무리될 전망일 때만. 방식: 엔진은 그대로, 데이터 파일 + 뉴런 ID 목록만 교체(Xenova MIT 엔진의 MaleCNS 로더 참고). 용도: 수컷 행동(구애·공격) 실험, "구글 데이터도 돌아간다"는 발표 대응. 주의: MaleCNS에는 검증된 LIF 벤치마크가 없으므로 [근거 있음/모델 미검증]으로 표시하고 FlyWire 결과와 같은 급으로 말하지 않는다
 - FlyGym Warp(8GB라 제외)
+- 발표용 Blender 오프라인 렌더 영상 — 하지 않기로 결정(2026-09-13)
 
 ## 11. 최종 시연 시나리오 (약 5분)
 
