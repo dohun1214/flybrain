@@ -30,7 +30,12 @@ scripts/  벤치마크·측정 스크립트
 docs/     plan.md, benchmark-week1.md(측정 결과), decisions.md
 ```
 
-## 1주차 이슈 (GitHub Issues #1~#7 참고)
+## 1주차 이슈 (GitHub Issues #1~#7 참고) — 2026-09-14 전부 완료, 결과는 `docs/benchmark-week1.md`
+- 뇌 커널은 `brain/lif_graph.py`(`LIFBrainGraph`, 고정 형상 + CUDA graph, 0.5× 실시간)를 쓴다. `brain/lif.py`(eager)는 참조 구현·동치 검증용
+- Brian2 정답: `data/ground_truth/` (gitignore, `brain/stage_a_brian2.py run` 으로 재생성). 결정적 동치 테스트: `brain/test_equivalence.py [--graph]`
+- 채널: `brain/channels.json` (정지 DN 미확정). 데이터: `python data/build_csr.py` → `data/processed/`
+- 2주차 병목: FlyGym 튜토리얼 컨트롤러(310 µs/step)·관측(110 µs) → 폐루프 0.1× 실시간. numba/호출 주기·뇌-몸 비동기로 개선
+
 1. 환경 세팅 (uv venv 3.13, torch CUDA, flygym)
 2. Stage A: Shiu 원본 Brian2로 v630 당 GRN→MN9 재현, 시드 5개 편차, silencing 예제 정답 저장
 3. 데이터: v630/v783 → CSR(npz), 뉴런·edge·시냅스 수 메타데이터, 주석 TSV 조인
